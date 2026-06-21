@@ -285,18 +285,49 @@
   function clientJoin(hostId, name){
     return new Promise((resolve,reject)=>{
       const p = new Peer(undefined, PEER_OPTS);
+      let settled=false, timeoutId;
+      function fail(reason){
+        if(settled) return;
+        settled=true;
+        clearTimeout(timeoutId);
+        try{ p.destroy(); }catch(e){}
+        reject(new Error(reason));
+      }
       p.on('open', ()=>{
         peer=p;
         const conn = p.connect(hostId, { reliable:true });
-        let settled=false;
-        conn.on('open', ()=>{ clientConn=conn; conn.send({t:'join', name}); settled=true; resolve(); });
+        conn.on('open', ()=>{
+          if(settled) return;
+          settled=true; clearTimeout(timeoutId);
+          clientConn=conn; conn.send({t:'join', name}); resolve();
+        });
         conn.on('data', data=> handleClientData(data));
-        conn.on('close', ()=>{ state.connError='Connection to the host was lost.'; if(state.screen==='in-room'){} renderApp(); });
-        conn.on('error', err=>{ if(!settled) reject(err); });
+        conn.on('close', ()=>{ state.connError='Connection to the host was lost.'; renderApp(); });
+        conn.on('error', err=> fail('conn-error:'+(err&&err.type?err.type:err)));
       });
-      p.on('error', err=> reject(err));
-      setTimeout(()=>{ if(!clientConn) reject(new Error('timeout')); }, 20000);
+      p.on('error', err=> fail('peer-error:'+(err&&err.type?err.type:err)));
+      p.on('disconnected', ()=> fail('signaling-disconnected'));
+      timeoutId = setTimeout(()=> fail('timeout'), 20000);
     });
+  }
+  function describeJoinError(e, target){
+    const msg = (e && e.message) || String(e);
+    const code = target.replace('mafia-','');
+    let friendly, tip;
+    if(msg.indexOf('peer-unavailable')>-1){
+      friendly = 'No case found at code "'+code+'".';
+      tip = 'Double-check the code with the host — codes change if the host reloads their page.';
+    } else if(msg.indexOf('timeout')>-1){
+      friendly = 'Found the host, but the connection never finished setting up.';
+      tip = 'This usually means the network is blocking direct device-to-device traffic. Try having the host turn on their phone hotspot and everyone join that instead of a shared Wi-Fi router.';
+    } else if(msg.indexOf('network')>-1 || msg.indexOf('server-error')>-1 || msg.indexOf('signaling')>-1){
+      friendly = 'Could not reach the connection service.';
+      tip = 'Check your own internet connection and try again in a moment.';
+    } else {
+      friendly = 'Could not connect.';
+      tip = 'Try again, or have the host re-share a fresh link.';
+    }
+    return friendly + ' ' + tip + ' (' + msg + ')';
   }
 
   /* ---------- unified message application (host applies its own broadcasts here too) ---------- */
@@ -451,7 +482,7 @@
       await clientJoin(target, state.myName);
       requestWakeLock();
     }catch(e){
-      state.screen='conn-error'; state.connError='Could not reach that case. Double-check the code, and if you\'re on different networks, try joining the same Wi-Fi as the host.';
+      state.screen='conn-error'; state.connError=describeJoinError(e, target);
       renderApp();
     }
   }
