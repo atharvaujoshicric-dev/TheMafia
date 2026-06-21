@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Case File — A Mafia Game</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" onerror="window.__qrFailed=true"></script>
+<style>
+  :root{
+    --bg:#14110F;
+    --paper:#EDE6D6;
+    --paper-2:#E2D9C4;
+    --ink:#1F1B16;
+    --blood:#9A2120;
+    --navy:#2E4057;
+    --gold:#C9A227;
+    --muted:#8A8276;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    background-image:radial-gradient(circle at 50% 0%, #1d1814 0%, #14110F 70%);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    color:var(--ink);
+    padding:24px 14px 60px;
+  }
+  .wrap{width:100%;max-width:430px;}
+  h1,h2,h3{font-family:Georgia,'Palatino Linotype',serif;margin:0 0 6px;}
+  .eyebrow{
+    font-family:'Courier New',Courier,monospace;
+    text-transform:uppercase;
+    letter-spacing:3px;
+    font-size:12px;
+    color:var(--gold);
+    margin-bottom:10px;
+  }
+  .card{
+    background:var(--paper);
+    background-image:linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
+    border-radius:6px;
+    padding:26px 22px;
+    box-shadow:0 18px 40px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.25);
+    position:relative;
+  }
+  .card + .card{margin-top:14px;}
+  .center{text-align:center;}
+  .muted{color:var(--muted);font-size:14px;}
+  .err{
+    background:rgba(154,33,32,.12);
+    border:1px solid var(--blood);
+    color:var(--blood);
+    padding:10px 12px;
+    border-radius:4px;
+    font-size:14px;
+    margin-bottom:14px;
+  }
+  label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:6px;font-family:'Courier New',monospace;}
+  input[type=text]{
+    width:100%;
+    padding:13px 14px;
+    border:2px solid rgba(31,27,22,.3);
+    border-radius:4px;
+    font-size:17px;
+    background:rgba(255,255,255,.5);
+    color:var(--ink);
+    margin-bottom:14px;
+    font-family:inherit;
+  }
+  input[type=text]:focus-visible, button:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+  .btn{
+    display:block;width:100%;padding:14px 18px;border-radius:4px;
+    font-size:16px;font-weight:700;cursor:pointer;border:2px solid var(--ink);
+    background:var(--ink);color:var(--paper);font-family:inherit;letter-spacing:.02em;
+    margin-bottom:10px;
+  }
+  .btn:disabled{opacity:.35;cursor:not-allowed;}
+  .btn-gold{background:var(--gold);border-color:var(--gold);color:#1F1B16;}
+  .btn-outline{background:transparent;color:var(--ink);}
+  .btn-blood{background:var(--blood);border-color:var(--blood);color:var(--paper);}
+  .divider{
+    display:flex;align-items:center;gap:10px;margin:20px 0;
+    color:var(--muted);font-family:'Courier New',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;
+  }
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:rgba(31,27,22,.25);}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .tb-left{display:flex;gap:8px;align-items:center;}
+  .code-chip,.round-chip{
+    font-family:'Courier New',monospace;font-size:12px;letter-spacing:1px;
+    background:rgba(31,27,22,.08);padding:5px 9px;border-radius:3px;border:1px solid rgba(31,27,22,.2);
+  }
+  .role-peek{
+    font-family:'Courier New',monospace;font-weight:700;letter-spacing:2px;font-size:12px;
+    padding:7px 12px;border-radius:3px;border:1px solid var(--ink);background:transparent;cursor:pointer;color:var(--ink);
+  }
+  .role-peek.is-mafia{border-color:var(--blood);color:var(--blood);}
+
+  .roster-item{display:flex;align-items:center;justify-content:space-between;padding:10px 4px;border-bottom:1px dashed rgba(31,27,22,.22);font-size:15px;}
+  .roster-item:last-child{border-bottom:none;}
+  .roster-item.dead{opacity:.4;text-decoration:line-through;}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--gold);display:inline-block;margin-right:8px;}
+  .roster-item.dead .dot{background:var(--muted);}
+
+  .pick-row{
+    display:flex;align-items:center;justify-content:space-between;padding:14px;
+    border:2px solid rgba(31,27,22,.2);border-radius:4px;margin-bottom:8px;cursor:pointer;
+    background:rgba(255,255,255,.35);min-height:24px;font-size:16px;
+  }
+  .pick-row.selected{border-color:var(--blood);background:rgba(154,33,32,.13);}
+  .pick-row.locked{opacity:.5;cursor:default;}
+
+  .stamp{
+    display:inline-block;font-family:'Courier New',monospace;font-weight:700;font-size:26px;
+    letter-spacing:4px;text-transform:uppercase;padding:14px 24px;border:4px double currentColor;
+    border-radius:2px;transform:rotate(-6deg);margin:14px 0;
+  }
+  .role-card{text-align:center;padding:26px 10px;}
+  .role-card.mafia{color:var(--blood);}
+  .role-card.civilian{color:var(--navy);}
+
+  .progress{font-family:'Courier New',monospace;font-size:13px;color:var(--muted);margin:10px 0;}
+
+  .siren-overlay{
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:999;
+    background:rgba(154,33,32,.6);animation:flash 0.5s infinite alternate;
+  }
+  @media (prefers-reduced-motion: reduce){ .siren-overlay{animation:none;background:rgba(154,33,32,.75);} }
+  @keyframes flash{from{background-color:rgba(154,33,32,.35);}to{background-color:rgba(154,33,32,.8);}}
+  .siren-card{background:var(--paper);padding:30px 24px;border-radius:6px;text-align:center;max-width:320px;}
+
+  .stepper{display:flex;align-items:center;gap:14px;justify-content:center;margin:10px 0 18px;}
+  .stepper button{
+    width:42px;height:42px;border-radius:50%;border:2px solid var(--ink);background:transparent;
+    font-size:20px;cursor:pointer;color:var(--ink);
+  }
+  .stepper .val{font-family:'Courier New',monospace;font-size:22px;font-weight:700;min-width:30px;text-align:center;}
+
+  #qr{display:flex;justify-content:center;margin:14px 0;}
+  #qr img,#qr canvas{border-radius:4px;background:#fff;padding:8px;}
+
+  .winbanner{text-align:center;padding:10px 0 4px;}
+  .winbanner.civ{color:var(--navy);}
+  .winbanner.mafia{color:var(--blood);}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+/* ---------------- state ---------------- */
+let local = {
+  playerId:null, name:null, code:null, isHost:false,
+  audioCtx:null, lastSeenEventSeq:0, lastStatus:null,
+  roleVisible:false, selection:null, errorMsg:null,
+  ringingNow:false, pollTimer:null, joinName:'', joinCode:'', createName:'',
+  mafiaCountDraft:1
+};
+let room = null;
+
+/* ---------------- helpers ---------------- */
+function genCode(){
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s=''; for(let i=0;i<4;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+function genId(){ return 'p_'+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function getPlayer(id){ return room && room.players.find(p=>p.id===id); }
+function playerName(id){ const p=getPlayer(id); return p?escapeHtml(p.name):'Unknown'; }
+function pickTopChoice(tally){
+  const keys=Object.keys(tally);
+  if(keys.length===0) return null;
+  let max=Math.max(...keys.map(k=>tally[k]));
+  const top=keys.filter(k=>tally[k]===max);
+  return top[Math.floor(Math.random()*top.length)];
+}
+function checkWinInPlace(r){
+  const aliveMafia=r.players.filter(p=>p.alive&&p.role==='mafia').length;
+  const aliveCiv=r.players.filter(p=>p.alive&&p.role==='civilian').length;
+  if(aliveMafia===0) r.winner='civilians';
+  else if(aliveMafia>=aliveCiv) r.winner='mafia';
+}
+
+/* ---------------- audio / vibration ---------------- */
+function ensureAudio(){
+  try{
+    if(!local.audioCtx){ local.audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }
+    else if(local.audioCtx.state==='suspended'){ local.audioCtx.resume(); }
+  }catch(e){}
+}
+document.addEventListener('click', ensureAudio, {capture:true});
+
+function playRing(){
+  try{
+    ensureAudio();
+    const ctx=local.audioCtx;
+    if(ctx){
+      const now=ctx.currentTime;
+      for(let i=0;i<6;i++){
+        const osc=ctx.createOscillator(); const gain=ctx.createGain();
+        osc.type='square'; osc.frequency.value = i%2===0?880:660;
+        osc.connect(gain); gain.connect(ctx.destination);
+        const start=now+i*0.32;
+        gain.gain.setValueAtTime(0.0001,start);
+        gain.gain.exponentialRampToValueAtTime(0.28,start+0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001,start+0.3);
+        osc.start(start); osc.stop(start+0.32);
+      }
+    }
+  }catch(e){}
+  if(navigator.vibrate){ try{ navigator.vibrate([300,150,300,150,300,150,300,150,300]); }catch(e){} }
+  local.ringingNow=true; render();
+  setTimeout(()=>{ local.ringingNow=false; render(); }, 2400);
+}
+
+/* ---------------- storage transaction (collision-safe write) ---------------- */
+async function transactOnCode(code, mutateFn){
+  for(let attempt=0; attempt<6; attempt++){
+    let res, latest;
+    try{ res = await window.storage.get('mafia-room:'+code, true); }
+    catch(e){ return {error:'not_found'}; }
+    try{ latest = JSON.parse(res.value); }catch(e){ return {error:'corrupt'}; }
+
+    const mutResult = mutateFn(latest);
+    if(mutResult && mutResult.error) return mutResult;
+
+    latest.eventSeq = (latest.eventSeq||0)+1;
+    latest.updatedAt = Date.now();
+    const expectedSeq = latest.eventSeq;
+
+    try{ await window.storage.set('mafia-room:'+code, JSON.stringify(latest), true); }
+    catch(e){ await sleep(150+Math.random()*200); continue; }
+
+    try{
+      const verify = await window.storage.get('mafia-room:'+code, true);
+      const vObj = JSON.parse(verify.value);
+      if(vObj.eventSeq === expectedSeq){ return {ok:true, room:vObj}; }
+    }catch(e){}
+    await sleep(150+Math.random()*250);
+  }
+  return {error:'conflict'};
+}
+
+/* ---------------- room actions ---------------- */
+async function createRoom(){
+  const name=(local.createName||'').trim();
+  if(!name){ local.errorMsg='Enter your name first.'; render(); return; }
+  ensureAudio();
+  const code=genCode();
+  const id=genId();
+  const newRoom={
+    code, hostId:id, status:'lobby', round:0,
+    players:[{id,name,role:null,alive:true}],
+    mafiaCount:1,
+    nightKillVotes:{}, nightSaveVotes:{}, dayVotes:{},
+    lastNightResult:null, lastDayResult:null,
+    winner:null, eventSeq:0, lastEventType:'created', updatedAt:Date.now()
+  };
+  try{
+    await window.storage.set('mafia-room:'+code, JSON.stringify(newRoom), true);
+  }catch(e){ local.errorMsg='Could not create the room. Try again.'; render(); return; }
+  local.playerId=id; local.name=name; local.code=code; local.isHost=true;
+  local.lastSeenEventSeq=0; local.errorMsg=null; local.lastStatus='lobby';
+  room=newRoom;
+  startPolling();
+  render();
+}
+
+async function joinRoom(){
+  const name=(local.joinName||'').trim();
+  const code=(local.joinCode||'').trim().toUpperCase();
+  if(!name || !code){ local.errorMsg='Enter your name and the room code.'; render(); return; }
+  ensureAudio();
+  local.errorMsg=null;
+  const result = await transactOnCode(code, (r)=>{
+    if(r.status!=='lobby') return {error:'started'};
+    if(r.players.some(p=>p.name.toLowerCase()===name.toLowerCase())) return {error:'name_taken'};
+    const id=genId();
+    r.players.push({id,name,role:null,alive:true});
+    r.lastEventType='player_joined';
+    r.__newId=id;
+    return null;
+  });
+  if(result.error==='not_found'){ local.errorMsg='No game found with that code — double check it.'; render(); return; }
+  if(result.error==='started'){ local.errorMsg='That game already started. Ask the host for a new room.'; render(); return; }
+  if(result.error==='name_taken'){ local.errorMsg='Someone already used that name — try another.'; render(); return; }
+  if(result.error){ local.errorMsg='Could not join right now — try again.'; render(); return; }
+
+  const r=result.room;
+  const me = r.players.find(p=>p.name===name && p.alive);
+  local.playerId = me.id; local.name=name; local.code=code; local.isHost=(r.hostId===me.id);
+  local.lastSeenEventSeq=r.eventSeq; local.lastStatus=r.status;
+  room=r;
+  startPolling();
+  render();
+}
+
+function startPolling(){
+  if(local.pollTimer) clearInterval(local.pollTimer);
+  local.pollTimer=setInterval(pollRoom, 1700);
+}
+async function pollRoom(){
+  if(!local.code) return;
+  try{
+    const res = await window.storage.get('mafia-room:'+local.code, true);
+    const r = JSON.parse(res.value);
+    room=r;
+    handleEvents();
+    if(room.status!==local.lastStatus){
+      local.selection=null; local.roleVisible=false; local.lastStatus=room.status;
+    }
+    render();
+  }catch(e){ /* transient — ignore */ }
+}
+function handleEvents(){
+  if(!room) return;
+  if(room.eventSeq !== local.lastSeenEventSeq){
+    if(room.lastEventType==='day_resolved' && room.lastDayResult &&
+       room.lastDayResult.eliminatedId===local.playerId &&
+       room.lastDayResult.eliminatedRole==='mafia'){
+      playRing();
+    }
+    local.lastSeenEventSeq=room.eventSeq;
+  }
+}
+
+async function setMafiaCount(delta){
+  const maxAllowed = Math.max(1, Math.floor(room.players.length/2)-1) || 1;
+  let n = (room.mafiaCount||1)+delta;
+  n = Math.max(1, Math.min(n, Math.max(1,maxAllowed)));
+  const result = await transactOnCode(room.code, r=>{ r.mafiaCount=n; r.lastEventType='lobby_update'; });
+  if(result.ok){ room=result.room; render(); }
+}
+
+async function startGame(){
+  if(room.players.length<4){ local.errorMsg='Need at least 4 players to start.'; render(); return; }
+  const result = await transactOnCode(room.code, r=>{
+    let shuffled=[...r.players].sort(()=>Math.random()-0.5);
+    const mc = Math.min(r.mafiaCount||1, Math.max(1, Math.floor(r.players.length/2)-1));
+    shuffled.forEach((sp,i)=>{
+      const target=r.players.find(x=>x.id===sp.id);
+      target.role = i<mc ? 'mafia':'civilian';
+      target.alive=true;
+    });
+    r.mafiaCount=mc; r.round=1; r.status='night';
+    r.nightKillVotes={}; r.nightSaveVotes={}; r.dayVotes={};
+    r.lastNightResult=null; r.lastDayResult=null; r.winner=null;
+    r.lastEventType='game_started';
+  });
+  if(result.ok){ room=result.room; local.errorMsg=null; render(); }
+  else { local.errorMsg='Could not start — try again.'; render(); }
+}
+
+async function selectTarget(id){ local.selection=id; render(); }
+
+async function confirmKill(){
+  if(!local.selection) return;
+  const result = await transactOnCode(room.code, r=>{
+    r.nightKillVotes[local.playerId]=local.selection;
+    r.lastEventType='vote';
+  });
+  if(result.ok){ room=result.room; render(); }
+}
+async function confirmSave(){
+  if(!local.selection) return;
+  const result = await transactOnCode(room.code, r=>{
+    r.nightSaveVotes[local.playerId]=local.selection;
+    r.lastEventType='vote';
+  });
+  if(result.ok){ room=result.room; render(); }
+}
+async function confirmVote(){
+  if(!local.selection) return;
+  const result = await transactOnCode(room.code, r=>{
+    r.dayVotes[local.playerId]=local.selection;
+    r.lastEventType='vote';
+  });
+  if(result.ok){ room=result.room; render(); }
+}
+
+async function resolveNight(){
+  const result = await transactOnCode(room.code, r=>{
+    const killTally={}; Object.values(r.nightKillVotes).forEach(t=>killTally[t]=(killTally[t]||0)+1);
+    const killTarget=pickTopChoice(killTally);
+    const saveTally={}; Object.values(r.nightSaveVotes).forEach(t=>saveTally[t]=(saveTally[t]||0)+1);
+    const saveTarget=pickTopChoice(saveTally);
+    const saved = !!(killTarget && saveTarget && killTarget===saveTarget);
+    let killedId=null;
+    if(killTarget && !saved){
+      killedId=killTarget;
+      const p=r.players.find(p=>p.id===killTarget);
+      if(p) p.alive=false;
+    }
+    r.lastNightResult={killedId, saved, attempted: !!killTarget};
+    r.status='night_result'; r.lastEventType='night_resolved';
+    checkWinInPlace(r);
+  });
+  if(result.ok){ room=result.room; render(); }
+}
+
+async function continueAfterNight(){
+  const result = await transactOnCode(room.code, r=>{
+    r.status = r.winner ? 'ended' : 'day_discuss';
+    r.lastEventType='phase_change';
+  });
+  if(result.ok){ room=result.room; render(); }
+}
+
+async function openVoting(){
+  const result = await transactOnCode(room.code, r=>{
+    r.status='day_vote'; r.dayVotes={}; r.lastEventType='phase_change';
+  });
+  if(result.ok){ room=result.room; render(); }
+}
+
+async function resolveDay(){
+  const result = await transactOnCode(room.code, r=>{
+    const tally={}; Object.values(r.dayVotes).forEach(t=>tally[t]=(tally[t]||0)+1);
+    const elim=pickTopChoice(tally);
+    let elimRole=null;
+    if(elim){
+      const p=r.players.find(p=>p.id===elim);
+      if(p){ p.alive=false; elimRole=p.role; }
+    }
+    r.lastDayResult={eliminatedId:elim, eliminatedRole:elimRole};
+    r.status='day_result'; r.lastEventType='day_resolved';
+    checkWinInPlace(r);
+  });
+  if(result.ok){ room=result.room; render(); }
+}
+
+async function continueAfterDay(){
+  const result = await transactOnCode(room.code, r=>{
+    if(r.winner){ r.status='ended'; }
+    else { r.round+=1; r.status='night'; r.nightKillVotes={}; r.nightSaveVotes={}; }
+    r.lastEventType='phase_change';
+  });
+  if(result.ok){ room=result.room; render(); }
+}
+
+async function playAgain(){
+  const result = await transactOnCode(room.code, r=>{
+    r.players.forEach(p=>{ p.role=null; p.alive=true; });
+    r.status='lobby'; r.round=0;
+    r.nightKillVotes={}; r.nightSaveVotes={}; r.dayVotes={};
+    r.lastNightResult=null; r.lastDayResult=null; r.winner=null;
+    r.lastEventType='reset';
+  });
+  if(result.ok){ room=result.room; render(); }
+}
+
+function toggleRole(){ local.roleVisible=!local.roleVisible; render(); }
+function setField(key,val){ local[key]=val; }
+
+async function copyInviteLink(){
+  const url = window.location.href.split('?')[0]+'?room='+room.code;
+  try{ await navigator.clipboard.writeText(url); local.errorMsg=null; alert('Invite link copied!'); }
+  catch(e){ alert('Share this link:\n'+url); }
+}
+
+/* ---------------- render ---------------- */
+function topBar(){
+  const me=getPlayer(local.playerId);
+  const roleLabel = (local.roleVisible && me && me.role) ? (me.role==='mafia'?'MAFIA':'CIVILIAN') : 'MY ROLE';
+  const isMafia = me && me.role==='mafia' && local.roleVisible;
+  return `<div class="topbar">
+    <div class="tb-left">
+      <span class="code-chip">${room.code}</span>
+      <span class="round-chip">${room.round? 'RD '+room.round : 'LOBBY'}</span>
+    </div>
+    <button class="role-peek ${isMafia?'is-mafia':''}" onclick="toggleRole()">${roleLabel}</button>
+  </div>`;
+}
+
+function rosterHTML(showRoles){
+  return room.players.map(p=>{
+    const roleTag = showRoles ? ` — ${p.role==='mafia'?'Mafia':'Civilian'}` : '';
+    return `<div class="roster-item ${p.alive?'':'dead'}"><span><span class="dot"></span>${escapeHtml(p.name)}${roleTag}</span>${p.id===room.hostId?'<span class="muted">HOST</span>':''}</div>`;
+  }).join('');
+}
+
+function welcomeScreen(){
+  const err = local.errorMsg ? `<div class="err">${escapeHtml(local.errorMsg)}</div>` : '';
+  return `
+  <div class="card">
+    <div class="eyebrow">Case File · A Mafia Party Game</div>
+    <h1>Who can you trust?</h1>
+    <p class="muted">Gather your group, hand out secret identities, and find the Mafia before they take over the town.</p>
+  </div>
+  <div class="card">
+    ${err}
+    <h3>Start a new game</h3>
+    <label>Your name</label>
+    <input type="text" placeholder="e.g. Sam" value="${escapeHtml(local.createName||'')}" oninput="setField('createName', this.value)">
+    <button class="btn btn-gold" onclick="createRoom()">Create Room</button>
+
+    <div class="divider">or</div>
+
+    <h3>Join a game</h3>
+    <label>Your name</label>
+    <input type="text" placeholder="e.g. Alex" value="${escapeHtml(local.joinName||'')}" oninput="setField('joinName', this.value)">
+    <label>Room code</label>
+    <input type="text" placeholder="e.g. K7QM" maxlength="4" style="text-transform:uppercase;letter-spacing:3px;" value="${escapeHtml(local.joinCode||'')}" oninput="setField('joinCode', this.value.toUpperCase())">
+    <button class="btn btn-outline" onclick="joinRoom()">Join Room</button>
+  </div>`;
+}
+
+function renderQR(){
+  const el=document.getElementById('qr');
+  if(!el) return;
+  el.innerHTML='';
+  if(window.__qrFailed || typeof QRCode==='undefined'){
+    el.innerHTML='<p class="muted center">(QR unavailable — share the code below)</p>';
+    return;
+  }
+  try{
+    const url=window.location.href.split('?')[0]+'?room='+room.code;
+    new QRCode(el, {text:url, width:160, height:160, colorDark:'#1F1B16', colorLight:'#ffffff'});
+  }catch(e){ el.innerHTML='<p class="muted center">(QR unavailable — share the code below)</p>'; }
+}
+
+function lobbyScreen(){
+  const err = local.errorMsg ? `<div class="err">${escapeHtml(local.errorMsg)}</div>` : '';
+  const isHost=local.isHost;
+  let hostBlock='';
+  if(isHost){
+    const canStart = room.players.length>=4;
+    hostBlock=`
+      <div id="qr"></div>
+      <p class="center muted">Scan to join, or share the code below.</p>
+      <button class="btn btn-outline" onclick="copyInviteLink()">Copy Invite Link</button>
+      <div class="divider">mafia count</div>
+      <div class="stepper">
+        <button onclick="setMafiaCount(-1)">−</button>
+        <div class="val">${room.mafiaCount||1}</div>
+        <button onclick="setMafiaCount(1)">+</button>
+      </div>
+      ${err}
+      <button class="btn btn-blood" ${canStart?'':'disabled'} onclick="startGame()">Start Game</button>
+      ${canStart?'':`<p class="muted center">Need at least 4 players (${room.players.length} joined).</p>`}
+    `;
+  } else {
+    hostBlock = `<p class="muted center">Waiting for the host to start the game…</p>`;
+  }
+  return `
+  <div class="card center">
+    <div class="eyebrow">Room Code</div>
+    <h1 style="font-family:'Courier New',monospace;letter-spacing:8px;">${room.code}</h1>
+    ${hostBlock}
+  </div>
+  <div class="card">
+    <h3>Players (${room.players.length})</h3>
+    ${rosterHTML(false)}
+  </div>`;
+}
+
+function roleReminder(){
+  const me=getPlayer(local.playerId);
+  if(!me || !me.alive) return '';
+  return `<p class="muted">Your role: <strong style="cursor:pointer" onclick="toggleRole()">${local.roleVisible ? (me.role==='mafia'?'Mafia':'Civilian') : 'tap to reveal'}</strong></p>`;
+}
+
+function nightScreen(){
+  const me=getPlayer(local.playerId);
+  const aliveMafia=room.players.filter(p=>p.alive&&p.role==='mafia');
+  const aliveCiv=room.players.filter(p=>p.alive&&p.role==='civilian');
+  const killVotes=Object.keys(room.nightKillVotes).filter(id=>aliveMafia.some(p=>p.id===id)).length;
+  const saveVotes=Object.keys(room.nightSaveVotes).filter(id=>aliveCiv.some(p=>p.id===id)).length;
+
+  let actionBlock;
+  if(!me.alive){
+    actionBlock=`<p class="muted">You've been eliminated. Watch quietly while the town decides.</p>
+      <p class="progress">Mafia decided: ${killVotes}/${aliveMafia.length} · Civilians decided: ${saveVotes}/${aliveCiv.length}</p>`;
+  } else if(me.role==='mafia'){
+    const already = room.nightKillVotes[local.playerId];
+    const targets = aliveCiv;
+    actionBlock = `
+      <h3>Choose someone to eliminate</h3>
+      ${targets.map(p=>`<div class="pick-row ${local.selection===p.id?'selected':''} ${already?'locked':''}" onclick="${already?'':`selectTarget('${p.id}')`}">${escapeHtml(p.name)}</div>`).join('')}
+      ${already
+        ? `<p class="muted center">Vote locked in: ${playerName(already)}. Waiting on other Mafia… (${killVotes}/${aliveMafia.length})</p>`
+        : `<button class="btn btn-blood" ${local.selection?'':'disabled'} onclick="confirmKill()">Confirm Kill</button>`}
+    `;
+  } else {
+    const already = room.nightSaveVotes[local.playerId];
+    const targets = room.players.filter(p=>p.alive);
+    actionBlock = `
+      <h3>Choose someone to protect</h3>
+      ${targets.map(p=>`<div class="pick-row ${local.selection===p.id?'selected':''} ${already?'locked':''}" onclick="${already?'':`selectTarget('${p.id}')`}">${escapeHtml(p.name)}${p.id===local.playerId?' (you)':''}</div>`).join('')}
+      ${already
+        ? `<p class="muted center">Vote locked in: ${playerName(already)}. Waiting on others… (${saveVotes}/${aliveCiv.length})</p>`
+        : `<button class="btn btn-gold" ${local.selection?'':'disabled'} onclick="confirmSave()">Confirm Protect</button>`}
+    `;
+  }
+
+  const hostBlock = local.isHost ? `
+    <div class="divider">host controls</div>
+    <p class="progress">Mafia: ${killVotes}/${aliveMafia.length} · Civilians: ${saveVotes}/${aliveCiv.length}</p>
+    <button class="btn btn-outline" onclick="resolveNight()">Resolve Night</button>
+  ` : '';
+
+  return `
+  ${topBar()}
+  <div class="card">
+    <div class="eyebrow">Night Falls — Round ${room.round}</div>
+    ${actionBlock}
+    ${hostBlock}
+  </div>`;
+}
+
+function nightResultScreen(){
+  const res=room.lastNightResult;
+  let narrative;
+  if(!res.attempted){
+    narrative='The night passed quietly. No one made a move.';
+  } else if(res.saved){
+    narrative='Someone was attacked in the night — but they were protected and survived.';
+  } else {
+    narrative=`<strong>${playerName(res.killedId)}</strong> was found dead this morning.`;
+  }
+  const cta = local.isHost
+    ? `<button class="btn btn-blood" onclick="continueAfterNight()">${room.winner?'See Final Results':'Continue to Day'}</button>`
+    : `<p class="muted center">Waiting for the host to continue…</p>`;
+  return `
+  ${topBar()}
+  <div class="card center">
+    <div class="eyebrow">Morning News</div>
+    <p style="font-size:17px;">${narrative}</p>
+    ${cta}
+  </div>
+  <div class="card">
+    <h3>Town Roster</h3>
+    ${rosterHTML(false)}
+  </div>`;
+}
+
+function dayDiscussScreen(){
+  const cta = local.isHost
+    ? `<button class="btn btn-blood" onclick="openVoting()">Start Voting</button>`
+    : `<p class="muted center">Waiting for the host to open voting…</p>`;
+  return `
+  ${topBar()}
+  <div class="card center">
+    <div class="eyebrow">Day — Round ${room.round}</div>
+    <h2>Discuss</h2>
+    <p class="muted">Talk it over out loud — who's been acting suspicious?</p>
+    ${cta}
+  </div>
+  <div class="card">
+    <h3>Town Roster</h3>
+    ${rosterHTML(false)}
+  </div>`;
+}
+
+function dayVoteScreen(){
+  const me=getPlayer(local.playerId);
+  const alive=room.players.filter(p=>p.alive);
+  const votedCount=Object.keys(room.dayVotes).filter(id=>alive.some(p=>p.id===id)).length;
+  let actionBlock;
+  if(!me.alive){
+    actionBlock=`<p class="muted">You're eliminated — silently watch the vote.</p><p class="progress">Votes in: ${votedCount}/${alive.length}</p>`;
+  } else {
+    const already=room.dayVotes[local.playerId];
+    const targets=alive.filter(p=>p.id!==local.playerId);
+    actionBlock=`
+      <h3>Who do you suspect?</h3>
+      ${targets.map(p=>`<div class="pick-row ${local.selection===p.id?'selected':''} ${already?'locked':''}" onclick="${already?'':`selectTarget('${p.id}')`}">${escapeHtml(p.name)}</div>`).join('')}
+      ${already
+        ? `<p class="muted center">Vote locked in: ${playerName(already)}. (${votedCount}/${alive.length} voted)</p>`
+        : `<button class="btn btn-blood" ${local.selection?'':'disabled'} onclick="confirmVote()">Confirm Vote</button>`}
+    `;
+  }
+  const hostBlock = local.isHost ? `
+    <div class="divider">host controls</div>
+    <p class="progress">Votes in: ${votedCount}/${alive.length}</p>
+    <button class="btn btn-outline" onclick="resolveDay()">Reveal Result</button>
+  ` : '';
+  return `
+  ${topBar()}
+  <div class="card">
+    <div class="eyebrow">Day — Round ${room.round} · Anonymous Vote</div>
+    ${actionBlock}
+    ${hostBlock}
+  </div>`;
+}
+
+function dayResultScreen(){
+  const res=room.lastDayResult;
+  let narrative;
+  if(!res.eliminatedId){
+    narrative='The vote was split — no one was eliminated.';
+  } else {
+    narrative=`<strong>${playerName(res.eliminatedId)}</strong> was voted out and revealed to be… <span class="stamp ${res.eliminatedRole}">${res.eliminatedRole==='mafia'?'Mafia':'Civilian'}</span>`;
+  }
+  const cta = local.isHost
+    ? `<button class="btn btn-blood" onclick="continueAfterDay()">${room.winner?'See Final Results':'Continue to Night'}</button>`
+    : `<p class="muted center">Waiting for the host to continue…</p>`;
+
+  const siren = (local.ringingNow) ? `
+    <div class="siren-overlay">
+      <div class="siren-card">
+        <div class="stamp mafia">caught</div>
+        <p>They got you. Hand over your phone — you're out.</p>
+      </div>
+    </div>` : '';
+
+  return `
+  ${siren}
+  ${topBar()}
+  <div class="card center">
+    <div class="eyebrow">Verdict</div>
+    <p style="font-size:17px;">${narrative}</p>
+    ${cta}
+  </div>
+  <div class="card">
+    <h3>Town Roster</h3>
+    ${rosterHTML(false)}
+  </div>`;
+}
+
+function endScreen(){
+  const civ = room.winner==='civilians';
+  const headline = civ ? 'Case Closed — Civilians Win' : 'The Town Has Fallen — Mafia Wins';
+  const cta = local.isHost
+    ? `<button class="btn btn-gold" onclick="playAgain()">Play Again</button>`
+    : `<p class="muted center">Waiting for the host to start a new round…</p>`;
+  return `
+  ${topBar()}
+  <div class="card center winbanner ${civ?'civ':'mafia'}">
+    <div class="eyebrow">Final Verdict</div>
+    <h2>${headline}</h2>
+    ${cta}
+  </div>
+  <div class="card">
+    <h3>Full Reveal</h3>
+    ${rosterHTML(true)}
+  </div>`;
+}
+
+function screenHTML(){
+  if(!local.playerId) return welcomeScreen();
+  if(!room) return `<div class="card center"><p class="muted">Loading case file…</p></div>`;
+  switch(room.status){
+    case 'lobby': return lobbyScreen();
+    case 'night': return nightScreen();
+    case 'night_result': return nightResultScreen();
+    case 'day_discuss': return dayDiscussScreen();
+    case 'day_vote': return dayVoteScreen();
+    case 'day_result': return dayResultScreen();
+    case 'ended': return endScreen();
+    default: return `<div class="card"><p>Unknown phase.</p></div>`;
+  }
+}
+
+function render(){
+  const app=document.getElementById('app');
+  app.innerHTML=screenHTML();
+  if(room && room.status==='lobby' && local.isHost){ renderQR(); }
+}
+
+/* ---------------- init ---------------- */
+(function init(){
+  try{
+    const params=new URLSearchParams(window.location.search);
+    const r=params.get('room');
+    if(r) local.joinCode=r.toUpperCase();
+  }catch(e){}
+  render();
+})();
+</script>
+</body>
+</html>
